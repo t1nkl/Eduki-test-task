@@ -42,25 +42,33 @@ class VoucherService
         $discountedPrice = 0;
         $remainingDiscount = $voucher->discount;
         $itemsWithDiscount = [];
+        $fraction = 0;
 
         foreach ($items as $item) {
             $relativePrice = $item['price'] / $totalPrice;
             $itemDiscount = $relativePrice * $voucher->discount;
-            $itemDiscount = min($itemDiscount, $item['price'], $remainingDiscount); // Prevent over-discounting
+            $itemDiscount = min($itemDiscount, $item['price'], $remainingDiscount);
 
             $itemWithDiscount = $item;
-            $itemWithDiscount['price_with_discount'] = (int)round(($item['price'] - $itemDiscount));
+            $itemWithDiscount['price_with_discount'] = $item['price'] - $itemDiscount;
+
+            $fraction += $itemWithDiscount['price_with_discount'] - (int) $itemWithDiscount['price_with_discount'];
+            $itemWithDiscount['price_with_discount'] = (int) $itemWithDiscount['price_with_discount'];
+
+            if ($fraction >= 1) {
+                $itemWithDiscount['price_with_discount'] += (int) $fraction;
+                $fraction -= (int) $fraction;
+            }
 
             $discountedPrice += $itemWithDiscount['price_with_discount'];
-            $remainingDiscount -= $itemDiscount;
             $itemsWithDiscount[] = $itemWithDiscount;
+            $remainingDiscount -= $itemDiscount;
 
             if ($remainingDiscount <= 0) {
                 break;
             }
         }
 
-        $discountedPrice += $remainingDiscount;
         $discountedPrice = min($totalPrice, $discountedPrice);
         $discountedPrice = max($discountedPrice, 0);
 
