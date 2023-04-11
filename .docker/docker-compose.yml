@@ -1,0 +1,58 @@
+version: "3.1"
+
+services:
+
+  nginx:
+    image: arm64v8/nginx:1.23-alpine
+    container_name: eduki_test_nginx
+    working_dir: /code
+    restart: always
+    volumes:
+      - ../:/code/:consistent
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+    links:
+      - fpm
+    ports:
+      - "8088:80"
+    networks:
+      - eduki_test_network
+
+  fpm:
+    build: ./php-fpm
+    container_name: eduki_test_fpm
+    restart: always
+    volumes:
+      - ../:/code/:consistent
+    entrypoint: /code/.docker/php-fpm/entrypoint.sh
+    links:
+      - mysql
+    networks:
+      - eduki_test_network
+      - eduki_test_db
+
+  tests:
+      image: "lehrermarktplatz/php-dev-test:latest"
+      command: [ "-s", "basic" ]
+      environment:
+          APP_HOST: "nginx"
+          APP_PORT: "80"
+      networks:
+          - eduki_test_network
+
+  mysql:
+      image: arm64v8/mysql:8.0.32
+      container_name: eduki_test_mysql
+      restart: always
+      environment:
+          - MYSQL_ROOT_PASSWORD=root
+          - MYSQL_DATABASE=eduki_test_db
+      ports:
+          - "3308:3306"
+      networks:
+          - eduki_test_db
+
+networks:
+  eduki_test_network:
+    external: true
+  eduki_test_db:
+    external: true
